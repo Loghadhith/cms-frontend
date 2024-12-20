@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
 interface FormData {
+  email: string;
   repo: string;
   file: string;
   ftype: string,
@@ -14,7 +15,53 @@ interface FormData {
 export default function Page() {
   const router = useRouter();
 
+  const [prevRepo, setRepos] = useState<string[]>([])
+
+
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const email = sessionStorage.getItem("email");
+
+      if (email) {
+        const d = { email };
+        try {
+          const resp = await fetch("http://localhost:5000/api/v1/fetchdata", {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(d),
+          });
+
+          if (resp.ok) {
+            const data = await resp.json();
+            setRepos(data);
+            console.log("Received data:", data);
+          } else {
+            console.log('Failed to fetch data:', resp.status);
+          }
+        } catch (err) {
+          console.log('Error during fetch:', err);
+        }
+      } else {
+        console.log("No email found in sessionStorage");
+      }
+    };
+
+    const token = sessionStorage.getItem('authToken');
+
+    if (token === null) {
+      router.push('/login');
+    } else {
+      fetchData();
+    }
+
+  }, []);
+
+
   const [formData, setData] = useState<FormData>({
+    email: '',
     repo: '',
     file: '',
     ftype: 'text',
@@ -23,6 +70,7 @@ export default function Page() {
 
   const clearData = () => {
     setData(() => ({
+      email: '',
       repo: '',
       file: '',
       ftype: '',
@@ -46,8 +94,16 @@ export default function Page() {
     console.log("image")
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
+  const handleInput = (e: React.FormEvent<HTMLTextAreaElement>) => {
+    const textarea = e.target as HTMLTextAreaElement;
+
+    textarea.style.height = 'auto';
+
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target as HTMLTextAreaElement | HTMLInputElement
     setData((prevData) => ({
       ...prevData,
       [name]: value,
@@ -56,7 +112,14 @@ export default function Page() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    var mail = sessionStorage.getItem("email")
     console.log('Done')
+    setData((prevData) => ({
+      ...prevData,
+      email: mail as string,
+    }))
+
+    console.log(formData)
     try {
       const d = await fetch("http://localhost:5000/api/v1/postdata", {
         method: "POST",
@@ -66,32 +129,16 @@ export default function Page() {
         body: JSON.stringify(formData),
       })
 
-      if( !d.ok ){
+      if (!d.ok) {
         console.log("Error at the add post")
       }
-      
+
       // Further process after post addition needs to be done
 
     } catch (err: any) {
       console.log(err);
     }
   }
-
-  useEffect(() => {
-    try {
-      // const token = localStorage.getItem("authToken");
-      const token = sessionStorage.getItem('authToken')
-
-      if (token === null) {
-        router.push('/login')
-      }
-
-    } catch (err) {
-      router.push('/login')
-      console.log(err)
-    }
-
-  })
 
   return (
     <div className="self-center">
@@ -101,16 +148,27 @@ export default function Page() {
           <label className="block text-gray-700 dark:text-gray-400 text-sm font-bold mb-2">
             Repo Name
           </label>
+
           <input
             type="text"
             name="repo"
             id="repo"
+            list="repo-list" // Link input to datalist
             onChange={handleChange}
             value={formData.repo}
             className="shadow appearance-none border rounded-md w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
-            placeholder="Email"
+            placeholder="Select or type your own repo name"
             required
           />
+
+          {/* Datalist for showing the repo options */}
+          <datalist id="repo-list">
+
+            {Array.isArray(prevRepo) && prevRepo.map((repo, index) => (
+              <option key={index} value={repo} />
+            ))}
+
+          </datalist>
           <label className="block text-gray-700 dark:text-gray-400 text-sm font-bold mb-2">
             File Name
           </label>
@@ -149,13 +207,13 @@ export default function Page() {
               <label className="block text-gray-700 dark:text-gray-400 text-sm font-bold mb-2">
                 Text Data
               </label>
-              <input
-                type="text"
+              <textarea
                 id="data"
                 name="data"
                 value={formData.data}
                 onChange={handleChange}
-                className="shadow appearance-none border rounded-md w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+                onInput={handleInput}
+                className="shadow appearance-none border rounded-md w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 resize-none transition-all duration-200 ease-in-out"
                 placeholder="The text data or content"
               />
             </>
@@ -186,12 +244,6 @@ export default function Page() {
               <img src={formData.data} alt="Uploaded" width={200} />
             </div>
           )}
-          {formData.ftype == "text" && (
-            <div>
-              <h3 className="font-bold">Text Data:</h3>
-              <p>{formData.data}</p>
-            </div>
-          )}
         </div>
         <div className="flex items-center justify-between">
           <button className="bg-red-500 hover:bg-red-700 text-white w-full font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline dark:bg-red-600" onClick={clearData}>
@@ -205,3 +257,25 @@ export default function Page() {
     </div>
   )
 }
+
+
+/*
+ * <input
+        type="text"
+        name="repo"
+        id="repo"
+        list="repo-list" // Link input to datalist
+        onChange={handleChange}
+        value={formData.repo}
+        className="shadow appearance-none border rounded-md w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+        placeholder="Select or type your own repo name"
+        required
+      />
+
+      {/* Datalist for showing the repo options }
+      <datalist id="repo-list">
+        {repoOptions.map((repo, index) => (
+          <option key={index} value={repo} />
+        ))}
+      </datalist>
+      */

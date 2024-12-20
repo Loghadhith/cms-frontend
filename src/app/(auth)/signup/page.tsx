@@ -49,6 +49,8 @@ export default function Signup() {
       console.log(response)
       // const data = await response.json();
       console.log('User registered:', response);
+      sessionStorage.setItem('email',formData.email)
+      router.push('/home')
     } catch (error: any) {
       throw new Error ('Unknown Error: ', error)
     }
