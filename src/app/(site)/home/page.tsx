@@ -34,11 +34,30 @@ export default function Home() {
   })
 
   return (
+
+    <div className="p-4">
+      {/* This div is styled using Tailwind */}
+      <div className="bg-indigo-500 text-white p-4">
+        Home page
+      </div>
+
+      {/* Render fetched HTML content */}
+      <div
+        className="mt-4"
+        dangerouslySetInnerHTML={{ __html: data }}
+      />
+
+      {/* You can also display raw data if needed */}
+      <div className="mt-4">{data}</div>
+    </div>
+  )
+}
+
+/*
+ *
     <div>
       <div className="bg-indigo-500">Home page</div>
       <div dangerouslySetInnerHTML={{ __html: data }} />
       <div>{data}</div>
     </div>
-  )
-}
-
+    */
